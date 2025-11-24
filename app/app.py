@@ -97,7 +97,16 @@ def dashboard():
     filter_type = request.args.get('type', '')
     filter_priority = request.args.get('priority', '')
     
-    query = Notification.query
+    # Récupérer l'utilisateur connecté
+    current_user_email = g.current_user.get('email')
+    current_user_obj = User.query.filter_by(email=current_user_email).first()
+    
+    if not current_user_obj:
+        flash('Utilisateur non trouvé', 'error')
+        return redirect(url_for('login'))
+    
+    # Filtrer les notifications par utilisateur connecté
+    query = Notification.query.filter_by(user_id=current_user_obj.id)
     
     if filter_type:
         query = query.filter_by(emergency_type=filter_type)
@@ -108,17 +117,17 @@ def dashboard():
     notifications = query.order_by(Notification.created_at.desc()).all()
     
     stats = {
-        'total': Notification.query.count(),
+        'total': Notification.query.filter_by(user_id=current_user_obj.id).count(),
         'by_type': {},
         'by_priority': {}
     }
     
     for et in EmergencyType:
-        count = Notification.query.filter_by(emergency_type=et.value).count()
+        count = Notification.query.filter_by(user_id=current_user_obj.id, emergency_type=et.value).count()
         stats['by_type'][et.value] = count
     
     for p in Priority:
-        count = Notification.query.filter_by(_priority=p.name).count()
+        count = Notification.query.filter_by(user_id=current_user_obj.id, _priority=p.name).count()
         stats['by_priority'][p.name] = count
     
     emergency_types = [e.value for e in EmergencyType]
@@ -223,8 +232,15 @@ def delete_user(user_id):
 @app.route('/api/notifications')
 @login_required
 def api_notifications():
-    """API pour récupérer les notifications"""
-    notifications = Notification.query.order_by(Notification.created_at.desc()).limit(50).all()
+    """API pour récupérer les notifications de l'utilisateur connecté"""
+    # Récupérer l'utilisateur connecté
+    current_user_email = g.current_user.get('email')
+    current_user_obj = User.query.filter_by(email=current_user_email).first()
+    
+    if not current_user_obj:
+        return jsonify([])
+    
+    notifications = Notification.query.filter_by(user_id=current_user_obj.id).order_by(Notification.created_at.desc()).limit(50).all()
     return jsonify([n.to_dict() for n in notifications])
 
 

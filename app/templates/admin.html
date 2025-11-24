@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}Administration - Utilisateurs{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">⚙️ Tableau de Bord Administrateur</h1>
+
+<div class="row">
+    <!-- Colonne de gauche pour la gestion des utilisateurs -->
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"> Ajouter un Utilisateur</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_user') }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nom complet *</label>
+                        <input type="text" class="form-control" id="name" name="name" required
+                                placeholder="Ex: Jean Dupont">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="email" name="email" required
+                                placeholder="jean.dupont@universite.edu">
+                        <div class="form-text">
+                            Validation automatique par descripteur EmailDescriptor
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Téléphone</label>
+                        <input type="text" class="form-control" id="phone" name="phone"
+                                placeholder="+33612345678">
+                        <div class="form-text">
+                            Format international requis (validation par PhoneDescriptor)
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="prefers_email" name="prefers_email" checked>
+                        <label class="form-check-label" for="prefers_email">
+                            Préfère recevoir par email
+                        </label>
+                        <div class="form-text">
+                            Si non coché, préférera les notifications push
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100">
+                         Ajouter l'Utilisateur
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"> Liste des Utilisateurs</h5>
+            </div>
+            <div class="card-body">
+                {% if users %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Email</th>
+                                <th>Téléphone</th>
+                                <th>Canal préféré</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>{{ user.name }}</td>
+                                <td>{{ user._email }}</td>
+                                <td>{{ user._phone or '-' }}</td>
+                                <td>
+                                    {% if user.prefers_email %}
+                                        <span class="badge bg-info"> Email</span>
+                                    {% else %}
+                                        <span class="badge bg-warning"> Push</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}"
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Supprimer {{ user.name }} ?');">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                             Supprimer
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    Aucun utilisateur créé. Utilisez le formulaire ci-contre pour en ajouter.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if users %}
+        <div class="card shadow">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Statistiques Utilisateurs</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h3>{{ users|length }}</h3>
+                        <p class="text-muted">Total</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h3>{{ users|selectattr('prefers_email')|list|length }}</h3>
+                        <p class="text-muted">Préfèrent Email</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h3>{{ users|rejectattr('prefers_email')|list|length }}</h3>
+                        <p class="text-muted">Préfèrent Push</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Colonne de droite pour les notifications et la file d'attente -->
+    <div class="col-md-6">
+        <!-- Section pour les notifications récentes -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"> Notifications Récentes</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_notifications %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Utilisateur</th>
+                                <th>Titre</th>
+                                <th>Type</th>
+                                <th>Priorité</th>
+                                <th>Canaux</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for notif in recent_notifications %}
+                            <tr>
+                                <td>{{ notif.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                <td>{{ notif.user.name }}</td>
+                                <td>
+                                    <strong>{{ notif.title }}</strong><br>
+                                    <small class="text-muted">{{ notif.body[:50] }}...</small>
+                                </td>
+                                <td><span class="badge bg-info">{{ notif.emergency_type }}</span></td>
+                                <td>
+                                    <span class="badge
+                                        {% if notif.priority == 'CRITICAL' %}bg-danger
+                                        {% elif notif.priority == 'HIGH' %}bg-warning text-dark
+                                        {% else %}bg-success{% endif %}">
+                                        {{ notif.priority }}
+                                    </span>
+                                </td>
+                                <td>{{ notif.channels or 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">Aucune notification récente.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Section pour le statut de la file d'attente -->
+        <div class="card shadow">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"> Statut de la File d'Attente Asynchrone</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-3">
+                    <div class="col-md-3">
+                        <h3>{{ queue_status_data.queue_size }}</h3>
+                        <p class="text-muted">En attente</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h3>{{ queue_status_data.running_tasks }}</h3>
+                        <p class="text-muted">En cours</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h3>{{ queue_status_data.pending_tasks }}</h3>
+                        <p class="text-muted">Total tâches</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h3>{{ queue_status_data.total_tasks }}</h3>
+                        <p class="text-muted">Total</p>
+                    </div>
+                </div>
+
+                <h6>Tâches en cours/récentes</h6>
+                {% if queue_status_data.tasks %}
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Statut</th>
+                                <th>Créée le</th>
+                                <th>Priorité</th>
+                                <th>Tentatives</th>
+                                <th>Erreur</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in queue_status_data.tasks %}
+                            <tr>
+                                <td><code>{{ task.id[:8] }}...</code></td>
+                                <td>
+                                    <span class="badge
+                                        {% if task.status == 'running' %}bg-success
+                                        {% elif task.status == 'pending' %}bg-warning
+                                        {% elif task.status == 'completed' %}bg-info
+                                        {% elif task.status == 'failed' %}bg-danger
+                                        {% elif task.status == 'retrying' %}bg-secondary
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ task.status }}
+                                    </span>
+                                </td>
+                                <td>{{ task.created_at }}</td>
+                                <td>{{ task.priority }}</td>
+                                <td>{{ task.retry_count }}/3</td>
+                                <td>
+                                    {% if task.error %}
+                                        <small class="text-danger">{{ task.error }}</small>
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">Aucune tâche dans la file d'attente.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

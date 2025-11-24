@@ -1,0 +1,11 @@
+app/env/
+app/__pycache__/
+app/*.pyc
+app/.pytest_cache/
+app/instance/*.db
+.git/
+.gitignore
+*.md
+documentation/
+*.pptx
+*.zip

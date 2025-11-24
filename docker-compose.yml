@@ -1,0 +1,37 @@
+services:
+  # Application Flask
+  flashnotify:
+    build: .
+    ports:
+      - "5001:5000"
+    environment:
+      - DATABASE_URL=postgresql://flashnotify:flashnotify_password@postgres:5432/flashnotify
+      - SESSION_SECRET=production-secret-key-change-me
+      - FLASK_ENV=production
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # Redis pour les files d'attente
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    restart: unless-stopped
+
+  # PostgreSQL pour production
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=flashnotify
+      - POSTGRES_USER=flashnotify
+      - POSTGRES_PASSWORD=flashnotify_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

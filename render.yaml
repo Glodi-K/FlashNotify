@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: projetpoo3
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "cd app && gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 wsgi:app"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: projetpoo3-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+
+databases:
+  - name: projetpoo3-db
+    databaseName: projetpoo3
+    user: projetpoo3user

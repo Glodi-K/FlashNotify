@@ -398,6 +398,32 @@ def api_docs():
     return render_template('api_docs.html')
 
 
+@app.route('/debug/init-db')
+def debug_init_db():
+    """Route de debug pour forcer l'initialisation DB"""
+    try:
+        from init_render_db import force_init
+        force_init()
+        return jsonify({"status": "success", "message": "DB initialisée"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+
+@app.route('/debug/db-status')
+def debug_db_status():
+    """Route de debug pour vérifier le statut de la DB"""
+    try:
+        users = User.query.all()
+        notifications = Notification.query.all()
+        return jsonify({
+            "users": len(users),
+            "notifications": len(notifications),
+            "db_url": app.config['SQLALCHEMY_DATABASE_URI'][:50] + "..."
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
 def init_db():
     """Initialise la base de données avec des données de test"""
     try:

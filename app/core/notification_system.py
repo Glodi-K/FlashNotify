@@ -160,32 +160,29 @@ class ArchiveMixin:
     
     def archive_notification(self, notification_data):
         """Sauvegarde la notification dans la base de données"""
-        from flask import current_app
-        
-        with current_app.app_context():
-            logging.info(f"Attempting to archive notification: {notification_data['title']}")
-            try:
-                # Créer une nouvelle notification dans la base de données
-                notification = Notification(
-                    user_id=notification_data['user_id'],
-                    title=notification_data['title'],
-                    body=notification_data['body'],
-                    emergency_type=notification_data['emergency_type'],
-                    priority=notification_data['priority'],
-                    channels=','.join([r['channel'] for r in notification_data.get('results', []) if r.get('status') == 'success'])
-                )
-                
-                db.session.add(notification)
-                db.session.commit()
-                
-                # Ajouter l'ID de la notification aux données retournées
-                notification_data['notification_id'] = notification.id
-                logging.info(f"Notification {notification.id} archived successfully.")
-                
-            except Exception as e:
-                db.session.rollback()
-                logging.error(f"Error archiving notification {notification_data['title']}: {e}", exc_info=True)
-                raise # Re-raise the exception to be caught by the worker
+        logging.info(f"Archivage de la notification: {notification_data['title']}")
+        try:
+            # Créer une nouvelle notification dans la base de données
+            notification = Notification(
+                user_id=notification_data['user_id'],
+                title=notification_data['title'],
+                body=notification_data['body'],
+                emergency_type=notification_data['emergency_type'],
+                priority=notification_data['priority'],
+                channels=','.join([r['channel'] for r in notification_data.get('results', []) if r.get('status') == 'success'])
+            )
+            
+            db.session.add(notification)
+            db.session.commit()
+            
+            # Ajouter l'ID de la notification aux données retournées
+            notification_data['notification_id'] = notification.id
+            logging.info(f"Notification {notification.id} archivée avec succès")
+            
+        except Exception as e:
+            db.session.rollback()
+            logging.error(f"Erreur d'archivage de la notification {notification_data['title']}: {e}", exc_info=True)
+            raise
         return notification_data
 
 

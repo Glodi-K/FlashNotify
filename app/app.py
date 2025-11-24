@@ -61,7 +61,7 @@ def index():
 
 @app.route('/send-notification', methods=['POST'])
 def send_notification():
-    """Envoie une notification de manière asynchrone via la file d'attente"""
+    """Envoie une notification directement (version simplifiée pour debug)"""
     try:
         user_id = request.form.get('user_id')
         title = request.form.get('title')
@@ -72,45 +72,20 @@ def send_notification():
             flash('Tous les champs sont requis', 'error')
             return redirect(url_for('index'))
         
-        user = User.query.get(user_id)
-        if not user:
-            flash('Utilisateur introuvable', 'error')
-            return redirect(url_for('index'))
+        # Import de la fonction simplifiée
+        from simple_notification import send_notification_direct
         
-        emergency_type = None
-        for et in EmergencyType:
-            if et.value == emergency_type_value:
-                emergency_type = et
-                break
+        # Envoi direct de la notification
+        result = send_notification_direct(user_id, title, body, emergency_type_value)
         
-        if not emergency_type:
-            emergency_type = EmergencyType.ACADEMIC
-        
-        # Utilisation de la file d'attente ThreadPool pour éviter les problèmes de boucle d'événements
-        try:
-            # Créer une fonction wrapper qui utilise le contexte d'application
-            def send_notification_wrapper():
-                return async_queue.send_notification_sync(
-                    app_instance=app,
-                    user_id=user.id,
-                    title=title,
-                    body=body,
-                    emergency_type=emergency_type_value
-                )
-            
-            task_id = thread_pool_queue.enqueue(
-                send_notification_wrapper,
-                max_retries=2  # Réduire les tentatives pour éviter les timeouts
-            )
-            
-            flash(f'Notification ajoutée à la file d\'attente (ID: {task_id[:8]}...)', 'success')
-            
-        except Exception as e:
-            flash(f'Erreur lors de l\'ajout à la file d\'attente: {str(e)}', 'error')
-            logging.error(f'Erreur d\'ajout à la file d\'attente: {str(e)}', exc_info=True)
+        if result['success']:
+            flash(f'Notification envoyée avec succès (ID: {result.get("notification_id", "N/A")})', 'success')
+        else:
+            flash(f'Erreur: {result["error"]}', 'error')
         
     except Exception as e:
-        flash(f'Erreur de validation: {str(e)}', 'error')
+        flash(f'Erreur: {str(e)}', 'error')
+        logging.error(f'Erreur d\'envoi: {str(e)}', exc_info=True)
     
     return redirect(url_for('index'))
 

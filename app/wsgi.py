@@ -21,12 +21,19 @@ if os.environ.get('DATABASE_URL'):
 # Initialiser la base de données et les files d'attente
 with app.app_context():
     try:
-        init_db()
+        # Forcer l'initialisation si pas d'utilisateurs
+        from models import User
+        if User.query.count() == 0:
+            logging.info("Base vide, initialisation forcée")
+            from init_render_db import force_init
+            force_init()
+        else:
+            init_db()
+        
         init_queues()
         logging.info("Initialisation réussie")
     except Exception as e:
         logging.error(f"Erreur d'initialisation: {e}", exc_info=True)
-        # Continuer même en cas d'erreur pour permettre le démarrage
 
 if __name__ == "__main__":
     app.run()

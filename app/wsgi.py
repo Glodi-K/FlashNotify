@@ -20,8 +20,13 @@ if os.environ.get('DATABASE_URL'):
 
 # Initialiser la base de données et les files d'attente
 with app.app_context():
-    init_db()
-    init_queues()
+    try:
+        init_db()
+        init_queues()
+        logging.info("Initialisation réussie")
+    except Exception as e:
+        logging.error(f"Erreur d'initialisation: {e}", exc_info=True)
+        # Continuer même en cas d'erreur pour permettre le démarrage
 
 if __name__ == "__main__":
     app.run()

@@ -400,11 +400,15 @@ def api_docs():
 
 def init_db():
     """Initialise la base de données avec des données de test"""
-    with app.app_context():
+    try:
         db.create_all()
+        logging.info("Tables créées")
         
         # Vérifier si des utilisateurs existent déjà
-        if User.query.count() == 0:
+        user_count = User.query.count()
+        logging.info(f"Nombre d'utilisateurs existants: {user_count}")
+        
+        if user_count == 0:
             # Créer un utilisateur admin
             admin_user = User(
                 name='Admin User',
@@ -413,7 +417,7 @@ def init_db():
                 role='admin',
                 prefers_email=True
             )
-            admin_user._password = auth_manager.hash_password('admin123')  # Hash le mot de passe
+            admin_user._password = auth_manager.hash_password('admin123')
             db.session.add(admin_user)
             
             # Créer des utilisateurs de test
@@ -426,21 +430,21 @@ def init_db():
                      role='user', prefers_email=True),
             ]
             
-            # Hasher les mots de passe pour les utilisateurs de test
             for user in users:
                 user._password = auth_manager.hash_password('user123')
                 db.session.add(user)
             
             db.session.commit()
-            print("Base de données initialisée avec des utilisateurs de test")
-        else:
-            print("Base de données déjà initialisée")
-            
-        # Pour déboguer : afficher les utilisateurs existants
+            logging.info("Utilisateurs de test créés")
+        
+        # Afficher les utilisateurs pour debug
         all_users = User.query.all()
-        print(f"Nombre d'utilisateurs dans la base: {len(all_users)}")
-        for user in all_users:
-            print(f"User: {user.email}, Role: {user.role}, Password hash: {user._password[:10] if user._password else 'None'}...")
+        logging.info(f"Total utilisateurs: {len(all_users)}")
+        
+    except Exception as e:
+        logging.error(f"Erreur init_db: {e}", exc_info=True)
+        db.session.rollback()
+        raise
 
 
 if __name__ == '__main__':
